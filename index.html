@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fff4e0">
+<meta name="apple-mobile-web-app-title" content="Filmfabrik">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Filmfabrik – Stop-Motion für Kinder</title>
+<style>
+/* Schrift „Baloo 2“ liegt im Ordner fonts/ (SIL Open Font License, siehe fonts/OFL.txt) */
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/baloo-2-500.woff2) format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/baloo-2-700.woff2) format('woff2')}
+@font-face{font-family:'Baloo 2';font-style:normal;font-weight:800;font-display:swap;src:url(fonts/baloo-2-800.woff2) format('woff2')}
+:root{
+  --bg:#fff4e0; --ink:#2b2140; --red:#ff5a5f; --yellow:#ffd23f; --mint:#3bceac;
+  --purple:#7b5cff; --orange:#ff9f1c; --panel:#ffffff; --soft:#f3ecff;
+  --shadow:0 6px 0 rgba(43,33,64,.18);
+  --font:'Baloo 2','Comic Sans MS','Chalkboard SE',system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
+body{background-image:radial-gradient(circle at 10% 10%,#ffe6b8 0 60px,transparent 61px),radial-gradient(circle at 95% 90%,#ffd9e0 0 90px,transparent 91px)}
+#app{display:grid;height:100%;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;padding:10px 12px 12px}
+
+/* Kopf */
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:30px;font-weight:800;line-height:1;white-space:nowrap}
+h1 span{color:var(--red)}
+.tabs{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+#info{font-size:18px;font-weight:700;background:var(--panel);padding:6px 14px;border-radius:999px;box-shadow:var(--shadow)}
+
+/* Knöpfe */
+.btn{border:none;border-radius:18px;padding:8px 16px;font:inherit;font-weight:800;font-size:20px;background:var(--panel);color:var(--ink);box-shadow:var(--shadow);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;transition:transform .08s,box-shadow .08s;line-height:1.05}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(43,33,64,.18)}
+.btn .ico{font-size:28px;line-height:1}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.btn.on{background:var(--mint);color:#fff}
+.tab.active{background:var(--purple);color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.btn.yellow{background:var(--yellow)}
+.btn.mint{background:var(--mint);color:#fff}
+.btn.big{font-size:24px;min-height:72px;width:100%}
+.btn.small{font-size:16px;min-height:50px;padding:6px 10px}
+
+/* Hauptbereich */
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;min-height:0}
+#stageWrap{position:relative;min-height:0;min-width:0;display:flex;align-items:center;justify-content:center}
+#stage{position:relative;background:#2b2140;border-radius:22px;overflow:hidden;box-shadow:0 8px 0 rgba(43,33,64,.25);border:6px solid #2b2140}
+#stage video,#stage canvas,#stage #onion{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#onion{opacity:.35;pointer-events:none}
+#view{touch-action:none;background:#2b2140}
+#camMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:#fff;font-size:24px;font-weight:700;padding:30px}
+#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:200px;font-weight:800;color:#fff;text-shadow:0 8px 0 rgba(0,0,0,.35);pointer-events:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:flash .35s ease-out}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+#playBadge{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:20px;padding:4px 14px;border-radius:999px;display:none}
+#hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);max-width:92%;text-align:center;background:rgba(43,33,64,.75);color:#fff;font-size:17px;font-weight:700;padding:4px 14px;border-radius:999px;pointer-events:none;display:none}
+
+/* Seitenleiste */
+#side{background:var(--panel);border-radius:22px;box-shadow:var(--shadow);padding:14px;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:12px}
+.panel{display:none;flex-direction:column;gap:12px}
+body[data-mode="camera"] #pCamera,body[data-mode="edit"] #pEdit,body[data-mode="play"] #pPlay{display:flex}
+.ptitle{font-size:22px;font-weight:800;margin:0}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .btn{flex:1 1 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid4 .btn{font-size:30px;padding:4px;min-height:58px}
+#snapBtn{width:150px;height:150px;border-radius:50%;margin:4px auto;background:var(--red);color:#fff;font-size:64px;border:10px solid #ffd0d2;box-shadow:0 8px 0 #c43c41}
+#snapBtn:active{transform:translateY(6px);box-shadow:0 2px 0 #c43c41}
+.label{font-size:16px;font-weight:700;opacity:.7;margin:-4px 0 -6px}
+#ovTools{display:none;flex-direction:column;gap:10px;background:var(--soft);border-radius:18px;padding:10px}
+#ovTools.show{display:flex}
+.speed .btn{flex-direction:column;gap:0;font-size:15px;min-height:70px}
+.speed .btn .ico{font-size:30px}
+.speed .btn.on{background:var(--orange)}
+.spacer{flex:1}
+
+/* Filmstreifen */
+#bottom{display:flex;flex-direction:column;gap:8px;min-width:0}
+#frameTools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#frameTools .btn{min-height:50px;font-size:18px;padding:6px 12px}
+#selInfo{font-weight:800;font-size:18px;margin-right:4px}
+#stripBox{background:#2b2140;border-radius:18px;padding:10px 8px;box-shadow:var(--shadow);
+  background-image:repeating-linear-gradient(90deg,#fff4e0 0 14px,transparent 14px 28px),repeating-linear-gradient(90deg,#fff4e0 0 14px,transparent 14px 28px);
+  background-size:100% 6px,100% 6px;background-position:0 3px,0 calc(100% - 3px);background-repeat:repeat-x}
+#strip{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:8px 4px;scroll-behavior:smooth;touch-action:pan-x;min-height:116px;align-items:center}
+#strip::-webkit-scrollbar{height:10px}
+#strip::-webkit-scrollbar-thumb{background:#7b5cff;border-radius:5px}
+.thumb{position:relative;flex:0 0 auto;width:160px;height:90px;border-radius:10px;overflow:hidden;border:4px solid transparent;cursor:pointer;background:#000;transition:transform .12s}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.thumb.sel{border-color:var(--yellow);transform:scale(1.06)}
+.thumb.lift{opacity:.35}
+.thumb.before{box-shadow:-10px 0 0 -2px var(--mint)}
+.thumb.after{box-shadow:10px 0 0 -2px var(--mint)}
+.thumb .num{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;font-size:15px;border-radius:8px;padding:0 7px}
+.thumb .ovb{position:absolute;right:4px;top:2px;font-size:20px}
+.empty{color:#fff;font-size:20px;font-weight:700;padding:0 16px;white-space:nowrap}
+#ghost{position:fixed;width:140px;height:79px;border-radius:10px;border:4px solid var(--mint);pointer-events:none;display:none;z-index:50;background-size:cover;background-position:center;transform:translate(-50%,-60%) rotate(-4deg);box-shadow:0 10px 20px rgba(0,0,0,.3)}
+
+/* Dialoge */
+.modal{position:fixed;inset:0;background:rgba(43,33,64,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal.open{display:flex}
+.card{background:#fff;border-radius:26px;padding:22px;max-width:560px;width:100%;box-shadow:0 10px 0 rgba(0,0,0,.2);display:flex;flex-direction:column;gap:16px;text-align:center;max-height:100%;overflow:auto}
+.card h2{margin:0;font-size:30px}
+.card img,.card video,.card canvas{width:100%;border-radius:14px;background:#000}
+.card textarea{font:inherit;font-size:30px;font-weight:700;border:4px solid var(--purple);border-radius:16px;padding:10px;resize:none;width:100%;height:120px;-webkit-user-select:text;user-select:text;text-align:center}
+.bar{height:22px;background:#eee;border-radius:11px;overflow:hidden}
+.bar div{height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--purple));transition:width .2s}
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-120px);background:var(--ink);color:#fff;font-weight:800;font-size:20px;padding:10px 20px;border-radius:999px;z-index:200;transition:transform .25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{transform:translate(-50%,0)}
+.saveHint{font-size:15px;opacity:.7}
+.ver{font-size:13px;font-weight:700;opacity:.45;text-align:center}
+
+/* Hochformat (Tablet hochkant) */
+@media (max-aspect-ratio: 1/1){
+  main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  #side{max-height:38vh}
+  #snapBtn{width:120px;height:120px;font-size:52px}
+}
+@media (max-width:700px){ h1{font-size:24px} .tab .txt{display:none} }
+
+/* ---------- Handy hochkant ---------- */
+@media (max-width:600px) and (orientation:portrait){
+  #app{grid-template-rows:auto auto minmax(0,1fr) auto;gap:8px;padding:8px}
+  main{display:contents}
+  header{flex-wrap:nowrap;gap:6px}
+  h1{font-size:20px}
+  #info{display:none}
+  .tabs{gap:6px}
+  .tab{min-height:46px;padding:4px 12px}
+  .tab .ico{font-size:24px}
+  #stageWrap{display:block}
+  #stage{border-width:4px;border-radius:16px}
+  #side{max-height:none;padding:10px;gap:8px;border-radius:18px}
+  .txt,.label{display:none}
+  #pCamera{flex-direction:row;align-items:center;gap:10px}
+  #pCamera .grid2{flex:1}
+  #snapBtn{width:104px;height:104px;font-size:44px;border-width:7px;margin:0;flex:0 0 auto}
+  .btn.small{min-height:46px;padding:4px}
+  #pEdit .grid2{grid-template-columns:repeat(4,1fr);gap:6px}
+  #pEdit .ptitle{font-size:16px}
+  .grid4{grid-template-columns:repeat(8,1fr);gap:5px}
+  .grid4 .btn{font-size:22px;min-height:42px;border-radius:12px}
+  #ovTools .btn.small{font-size:15px}
+  .btn.big{min-height:56px;font-size:20px}
+  #frameTools{flex-wrap:nowrap;gap:6px}
+  #frameTools .btn{min-height:44px;padding:4px 12px}
+  #selInfo{font-size:15px;white-space:nowrap}
+  #stripBox{padding:6px 6px;border-radius:14px}
+  #strip{min-height:76px;padding:6px 2px}
+  .thumb{width:112px;height:63px;border-width:3px}
+}
+/* ---------- Handy quer ---------- */
+@media (max-height:500px) and (orientation:landscape){
+  #app{grid-template-columns:minmax(0,1fr) 210px;grid-template-rows:auto minmax(0,1fr) auto;
+       grid-template-areas:"stage head" "stage side" "bottom side";gap:6px;padding:6px 8px}
+  main{display:contents}
+  header{grid-area:head;flex-wrap:nowrap}
+  h1,#info,.txt,.label,#selInfo{display:none}
+  .tabs{margin:0;width:100%;flex-wrap:nowrap;gap:6px}
+  .tab{flex:1;min-height:44px;padding:2px}
+  .tab .ico{font-size:22px}
+  #stageWrap{grid-area:stage}
+  #stage{border-width:4px;border-radius:14px}
+  #side{grid-area:side;padding:8px;gap:8px;max-height:none;border-radius:16px}
+  #snapBtn{width:86px;height:86px;font-size:38px;border-width:6px;margin:0 auto}
+  .btn.small{min-height:42px;padding:4px}
+  .grid4 .btn{font-size:22px;min-height:42px}
+  #pEdit .ptitle{font-size:15px}
+  #ovTools .btn.small{font-size:14px}
+  .btn.big{min-height:52px;font-size:18px}
+  .speed .btn{min-height:56px;font-size:13px}
+  #bottom{grid-area:bottom;flex-direction:row;align-items:center;gap:6px}
+  #frameTools{flex-wrap:nowrap;flex:0 0 auto;gap:5px}
+  #frameTools .btn{min-height:44px;padding:4px 8px}
+  #frameTools .btn .ico{font-size:22px}
+  #stripBox{flex:1;min-width:0;padding:4px;border-radius:12px}
+  #strip{min-height:62px;padding:4px 2px;gap:6px}
+  .thumb{width:96px;height:54px;border-width:3px}
+}
+</style>
+</head>
+<body data-mode="camera">
+<div id="app">
+  <header>
+    <h1>🎬 Film<span>fabrik</span></h1>
+    <div id="info">0 Bilder</div>
+    <nav class="tabs">
+      <button class="btn tab active" data-mode="camera"><span class="ico">📷</span><span class="txt">Fotografieren</span></button>
+      <button class="btn tab" data-mode="edit"><span class="ico">✨</span><span class="txt">Verzieren</span></button>
+      <button class="btn tab" data-mode="play"><span class="ico">🍿</span><span class="txt">Kino</span></button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="stageWrap">
+      <div id="stage">
+        <video id="cam" autoplay playsinline muted></video>
+        <img id="onion" alt="">
+        <canvas id="view" width="960" height="540"></canvas>
+        <div id="camMsg"></div>
+        <div id="count"></div>
+        <div id="flash"></div>
+        <div id="playBadge"></div>
+        <div id="hint"></div>
+      </div>
+    </div>
+
+    <aside id="side">
+      <!-- Fotografieren -->
+      <section class="panel" id="pCamera">
+        <button class="btn" id="snapBtn" title="Foto machen (Leertaste)">📸</button>
+        <div class="grid2">
+          <button class="btn small on" id="onionBtn"><span class="ico">👻</span><span class="txt">Geister-<br>bild</span></button>
+          <button class="btn small" id="timerBtn"><span class="ico">⏱️</span><span class="txt">3-2-1</span></button>
+          <button class="btn small" id="flipCamBtn"><span class="ico">🔄</span><span class="txt">Andere<br>Kamera</span></button>
+          <button class="btn small" id="importBtn"><span class="ico">🖼️</span><span class="txt">Fotos<br>holen</span></button>
+        </div>
+        <p class="label">👻 Das Geisterbild zeigt dir das letzte Foto ganz durchsichtig. So siehst du, wie weit du deine Figur bewegt hast!</p>
+      </section>
+
+      <!-- Verzieren -->
+      <section class="panel" id="pEdit">
+        <p class="ptitle">Sprechblasen</p>
+        <div class="grid2">
+          <button class="btn small" data-add="speech"><span class="ico">💬</span><span class="txt">Reden</span></button>
+          <button class="btn small" data-add="thought"><span class="ico">💭</span><span class="txt">Denken</span></button>
+          <button class="btn small" data-add="shout"><span class="ico">💥</span><span class="txt">Rufen</span></button>
+          <button class="btn small" data-add="caption"><span class="ico">📜</span><span class="txt">Schild</span></button>
+        </div>
+        <p class="ptitle">Sticker</p>
+        <div class="grid4" id="emojiGrid"></div>
+
+        <div id="ovTools">
+          <p class="ptitle">Dein Sticker</p>
+          <div class="row">
+            <button class="btn small" id="ovBigger"><span class="ico">➕</span></button>
+            <button class="btn small" id="ovSmaller"><span class="ico">➖</span></button>
+            <button class="btn small" id="ovFlip"><span class="ico">↔️</span></button>
+            <button class="btn small" id="ovText"><span class="ico">✏️</span></button>
+          </div>
+          <button class="btn small mint" id="ovNext"><span class="ico">➡️</span>Ins nächste Bild mitnehmen</button>
+          <button class="btn small" id="ovAll"><span class="ico">⏩</span>In alle nächsten Bilder</button>
+          <button class="btn small red" id="ovDel"><span class="ico">🗑️</span>Sticker weg</button>
+        </div>
+        <p class="label">Tipp: Sticker mit dem Finger verschieben. Mit zwei Fingern größer und kleiner machen. Zweimal tippen ändert den Text.</p>
+      </section>
+
+      <!-- Kino -->
+      <section class="panel" id="pPlay">
+        <button class="btn big mint" id="playBtn"><span class="ico">▶️</span>Film ab!</button>
+        <p class="label">Wie schnell?</p>
+        <div class="row speed" id="speedRow">
+          <button class="btn" data-fps="3"><span class="ico">🐢</span>Schnecke</button>
+          <button class="btn on" data-fps="6"><span class="ico">🐰</span>Hase</button>
+          <button class="btn" data-fps="12"><span class="ico">🚀</span>Rakete</button>
+        </div>
+        <button class="btn small on" id="loopBtn"><span class="ico">🔁</span>Immer wieder</button>
+        <button class="btn big yellow" id="exportBtn"><span class="ico">🎞️</span>Film speichern</button>
+        <div class="spacer"></div>
+        <button class="btn small" id="newBtn"><span class="ico">🆕</span>Neuen Film anfangen</button>
+        <div class="ver">Filmfabrik · Version 4</div>
+      </section>
+    </aside>
+  </main>
+
+  <section id="bottom">
+    <div id="frameTools">
+      <span id="selInfo"></span>
+      <button class="btn" id="fLeft" title="Nach links schieben"><span class="ico">⬅️</span></button>
+      <button class="btn" id="fRight" title="Nach rechts schieben"><span class="ico">➡️</span></button>
+      <button class="btn" id="fDup"><span class="ico">📄</span><span class="txt">Doppeln</span></button>
+      <button class="btn" id="fDel"><span class="ico">🗑️</span><span class="txt">Wegwerfen</span></button>
+      <button class="btn yellow" id="fUndo" style="display:none"><span class="ico">↩️</span><span class="txt">Zurückholen</span></button>
+    </div>
+    <div id="stripBox"><div id="strip"></div></div>
+  </section>
+</div>
+
+<div id="ghost"></div>
+<input type="file" id="fileIn" accept="image/*" multiple hidden>
+
+<!-- Ja/Nein-Dialog -->
+<div class="modal" id="dlg"><div class="card">
+  <div id="dlgBody"></div>
+  <div class="row"><button class="btn big" id="dlgNo">Nein</button><button class="btn big red" id="dlgYes">Ja</button></div>
+</div></div>
+
+<!-- Text-Dialog -->
+<div class="modal" id="txtDlg"><div class="card">
+  <h2>✏️ Was soll drinstehen?</h2>
+  <textarea id="txtIn" maxlength="80"></textarea>
+  <div class="row"><button class="btn big mint" id="txtOk">✔️ Fertig</button></div>
+</div></div>
+
+<!-- Export-Dialog -->
+<div class="modal" id="expDlg"><div class="card">
+  <h2 id="expTitle">🎞️ Dein Film wird gebaut …</h2>
+  <div id="expStage"></div>
+  <div class="bar" id="expBar"><div></div></div>
+  <div class="row" id="expBtns" style="display:none">
+    <a class="btn big yellow" id="expDl" download>💾 Herunterladen</a>
+    <button class="btn big mint" id="expShare" style="display:none">📤 Teilen</button>
+  </div>
+  <button class="btn" id="expClose" style="display:none">Schließen</button>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const W = 960, H = 540;
+const FONT = "'Baloo 2','Comic Sans MS','Chalkboard SE',sans-serif";
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const EMOJIS = ['⭐','❤️','💥','💨','❓','❗','😂','😱','🎵','🔥','💤','✨','👀','💧','⚡','🌈'];
+const $ = s => document.querySelector(s);
+
+const cam = $('#cam'), onionImg = $('#onion'), view = $('#view'), vctx = view.getContext('2d');
+const strip = $('#strip'), stage = $('#stage'), stageWrap = $('#stageWrap');
+
+let frames = [];          // {id, blob, url, img, overlays:[]}
+let sel = -1;             // ausgewähltes Bild
+let selOv = -1;           // ausgewählter Sticker im Bild
+let mode = 'camera';
+let stream = null, facing = 'environment';
+let onion = true, useTimer = false, busy = false;
+let fps = 6, loop = true, playing = false, playTimer = null, playIdx = 0;
+let undoStack = [];
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- Kleinkram ---------- */
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+let actx = null;
+function beep(type){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const now = actx.currentTime;
+    if(type==='snap'){
+      const len = 0.12, buf = actx.createBuffer(1, actx.sampleRate*len, actx.sampleRate), d = buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/d.length, 3);
+      const src = actx.createBufferSource(); src.buffer = buf;
+      const g = actx.createGain(); g.gain.value = 0.5; src.connect(g).connect(actx.destination); src.start(now);
+    } else {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = type==='go' ? 880 : (type==='pop' ? 620 : 440);
+      g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.001, now+0.18);
+      o.connect(g).connect(actx.destination); o.start(now); o.stop(now+0.2);
+    }
+  }catch(e){}
+}
+
+function ask(html, yes='Ja', no='Nein'){
+  return new Promise(res=>{
+    $('#dlgBody').innerHTML = html; $('#dlgYes').textContent = yes; $('#dlgNo').textContent = no;
+    $('#dlg').classList.add('open');
+    const done = v => { $('#dlg').classList.remove('open'); res(v); };
+    $('#dlgYes').onclick = () => done(true); $('#dlgNo').onclick = () => done(false);
+  });
+}
+
+function askText(initial){
+  return new Promise(res=>{
+    const ta = $('#txtIn'); ta.value = initial || '';
+    $('#txtDlg').classList.add('open');
+    setTimeout(()=>{ ta.focus(); ta.select(); }, 50);
+    $('#txtOk').onclick = () => { $('#txtDlg').classList.remove('open'); ta.blur(); res(ta.value.trim()); };
+  });
+}
+
+/* ---------- Bühne an Platz anpassen ---------- */
+const phonePortrait = window.matchMedia('(max-width:600px) and (orientation:portrait)');
+function fitStage(){
+  const r = stageWrap.getBoundingClientRect();
+  let w = r.width, h = w * 9/16;
+  if(!phonePortrait.matches && h > r.height){ h = r.height; w = h * 16/9; }
+  stage.style.width = Math.floor(w) + 'px'; stage.style.height = Math.floor(h) + 'px';
+}
+new ResizeObserver(fitStage).observe(stageWrap);
+window.addEventListener('resize', fitStage);
+
+/* ---------- Kamera ---------- */
+function camMsg(text){ const m=$('#camMsg'); if(text){ m.textContent=text; m.style.display='flex'; } else m.style.display='none'; }
+
+async function startCam(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    camMsg('Hier gibt es keine Kamera 😕\nDu kannst aber mit 🖼️ Fotos holen!'); return;
+  }
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio:false,
+      video:{ facingMode:{ ideal:facing }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+    cam.srcObject = stream; await cam.play().catch(()=>{}); camMsg('');
+  }catch(e){
+    camMsg('Die Kamera will nicht 😕\nErlaube oben im Browser den Kamera-Zugriff – oder hol dir Fotos mit 🖼️.');
+  }
+}
+
+function drawCover(ctx, src, sw, sh){
+  const r = Math.max(W/sw, H/sh), dw = sw*r, dh = sh*r;
+  ctx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
+}
+
+async function countdown(n){
+  const c = $('#count'); c.style.display='flex';
+  for(let i=n;i>0;i--){ c.textContent=i; beep('tick'); await sleep(800); }
+  c.style.display='none';
+}
+
+async function snap(){
+  if(busy || mode!=='camera') return;
+  if(!stream || !cam.videoWidth){ toast('Keine Kamera da – nimm 🖼️ Fotos holen'); return; }
+  busy = true;
+  try{
+    if(useTimer) await countdown(3);
+    const c = document.createElement('canvas'); c.width=W; c.height=H;
+    drawCover(c.getContext('2d'), cam, cam.videoWidth, cam.videoHeight);
+    const fl = $('#flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+    beep('snap');
+    const blob = await new Promise(r=>c.toBlob(r,'image/jpeg',0.88));
+    await addFrame(blob, []);
+  } finally { busy = false; }
+}
+
+function makeFrame(blob, overlays, id){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => res({ id:id||uid(), blob, url, img, overlays:overlays||[] });
+    img.onerror = rej; img.src = url;
+  });
+}
+
+async function addFrame(blob, overlays, at){
+  const f = await makeFrame(blob, overlays);
+  const i = (at==null) ? frames.length : at;
+  frames.splice(i, 0, f); sel = i;
+  afterChange(); scrollToSel();
+}
+
+async function importFiles(files){
+  const list = [...files].filter(f=>f.type.startsWith('image/'));
+  for(const file of list){
+    try{
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+      const c = document.createElement('canvas'); c.width=W; c.height=H;
+      const ctx = c.getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+      drawCover(ctx, img, img.naturalWidth, img.naturalHeight);
+      URL.revokeObjectURL(url);
+      const blob = await new Promise(r=>c.toBlob(r,'image/jpeg',0.88));
+      await addFrame(blob, []);
+    }catch(e){ toast('Ein Bild ging nicht 😕'); }
+  }
+  if(list.length) toast(list.length + (list.length===1?' Bild':' Bilder') + ' dazu! 🎉');
+}
+
+function updateOnion(){
+  const last = frames[frames.length-1];
+  if(mode==='camera' && onion && last){ onionImg.src = last.url; onionImg.style.display='block'; }
+  else onionImg.style.display='none';
+}
+
+/* ---------- Sticker zeichnen ---------- */
+function wrapText(ctx, text, maxW){
+  const out = [];
+  String(text).split('\n').forEach(par=>{
+    let line = '';
+    par.split(' ').forEach(w=>{
+      const t = line ? line+' '+w : w;
+      if(ctx.measureText(t).width > maxW && line){ out.push(line); line = w; } else line = t;
+    });
+    out.push(line);
+  });
+  return out;
+}
+
+const PAD = { speech:[0.8,0.5], thought:[1.15,0.95], shout:[1.6,1.25], caption:[0.6,0.35] };
+function geo(ctx, o){
+  const cx = o.x*W, cy = o.y*H;
+  if(o.kind==='emoji'){ const fs = 100*o.s; return { cx, cy, fs, w:fs*1.2, h:fs*1.2 }; }
+  const fs = 32*o.s;
+  ctx.font = `800 ${fs}px ${FONT}`;
+  const lines = wrapText(ctx, o.text || '…', fs*8);
+  const lh = fs*1.05;
+  const tw = Math.max(fs*1.5, ...lines.map(l=>ctx.measureText(l).width));
+  const p = PAD[o.kind];
+  return { cx, cy, fs, lines, lh, w: tw + fs*p[0]*2, h: lines.length*lh + fs*p[1]*2 };
+}
+function bbox(ctx, o){
+  const g = geo(ctx, o);
+  const b = { x0:g.cx-g.w/2, y0:g.cy-g.h/2, x1:g.cx+g.w/2, y1:g.cy+g.h/2 };
+  if(o.kind==='speech' || o.kind==='thought') b.y1 += g.fs*1.3;
+  return b;
+}
+function rr(ctx, x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+function drawOverlay(ctx, o){
+  ctx.save();
+  const g = geo(ctx, o), { cx, cy, w, h, fs } = g;
+  const lw = Math.max(3, fs*0.13), dir = o.flip ? 1 : -1;
+  ctx.lineJoin = 'round'; ctx.lineWidth = lw; ctx.strokeStyle = '#2b2140';
+
+  if(o.kind==='emoji'){
+    ctx.translate(cx, cy); if(o.flip) ctx.scale(-1, 1);
+    ctx.font = `${fs}px ${EMOJI_FONT}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(o.text, 0, fs*0.06); ctx.restore(); return;
+  }
+
+  if(o.kind==='speech'){
+    const r = Math.min(h/2, fs*0.9), bottom = cy + h/2;
+    const body = () => rr(ctx, cx-w/2, cy-h/2, w, h, r);
+    const tail = () => { ctx.beginPath(); ctx.moveTo(cx+dir*w*0.06, bottom-lw*2);
+      ctx.lineTo(cx+dir*w*0.34, bottom+fs*1.25); ctx.lineTo(cx+dir*w*0.24, bottom-lw*2); ctx.closePath(); };
+    ctx.fillStyle = '#fff';
+    body(); ctx.stroke(); tail(); ctx.stroke(); body(); ctx.fill(); tail(); ctx.fill();
+  }
+  else if(o.kind==='thought'){
+    const b = fs*0.7, rx = w/2 - b*0.45, ry = h/2 - b*0.45;
+    const per = 2*Math.PI*Math.sqrt((rx*rx+ry*ry)/2), n = Math.max(8, Math.ceil(per/(b*1.35)));
+    const circles = [];
+    for(let i=0;i<n;i++){ const a=i/n*Math.PI*2; circles.push([cx+Math.cos(a)*rx, cy+Math.sin(a)*ry, b*(i%2?0.9:1)]); }
+    const tx = cx + dir*w*0.22, ty = cy + ry + b*0.6;
+    circles.push([tx+dir*fs*0.35, ty+fs*0.45, fs*0.28], [tx+dir*fs*0.75, ty+fs*0.95, fs*0.17]);
+    ctx.fillStyle = '#fff';
+    circles.forEach(c=>{ ctx.beginPath(); ctx.arc(c[0],c[1],c[2],0,Math.PI*2); ctx.stroke(); });
+    circles.forEach(c=>{ ctx.beginPath(); ctx.arc(c[0],c[1],c[2],0,Math.PI*2); ctx.fill(); });
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.fill();
+  }
+  else if(o.kind==='shout'){
+    const n = 16; ctx.beginPath();
+    for(let i=0;i<n*2;i++){
+      const a = i/(n*2)*Math.PI*2 + (o.flip?0.1:0), f = i%2 ? 0.78 : 1.05;
+      ctx.lineTo(cx+Math.cos(a)*w/2*f, cy+Math.sin(a)*h/2*f);
+    }
+    ctx.closePath(); ctx.fillStyle = '#ffd23f'; ctx.fill(); ctx.stroke();
+  }
+  else if(o.kind==='caption'){
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(cx-w/2+6, cy-h/2+6, w, h);
+    ctx.fillStyle = '#fff3b0'; ctx.fillRect(cx-w/2, cy-h/2, w, h); ctx.strokeRect(cx-w/2, cy-h/2, w, h);
+  }
+
+  ctx.font = `800 ${fs}px ${FONT}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle = o.kind==='shout' ? '#d7263d' : '#2b2140';
+  const y0 = cy - (g.lines.length-1)*g.lh/2;
+  g.lines.forEach((l,i)=>ctx.fillText(l, cx, y0 + i*g.lh + fs*0.06));
+  ctx.restore();
+}
+
+function renderFrame(ctx, i){
+  const f = frames[i];
+  ctx.fillStyle = '#2b2140'; ctx.fillRect(0,0,W,H);
+  if(!f) return;
+  ctx.drawImage(f.img, 0, 0, W, H);
+  f.overlays.forEach(o=>drawOverlay(ctx, o));
+}
+
+function renderView(){
+  if(mode==='camera') return;
+  const i = playing ? playIdx : sel;
+  if(!frames.length){
+    vctx.fillStyle='#2b2140'; vctx.fillRect(0,0,W,H);
+    vctx.fillStyle='#fff'; vctx.font=`800 40px ${FONT}`; vctx.textAlign='center'; vctx.textBaseline='middle';
+    vctx.fillText('Noch keine Bilder – ab zum 📷 Fotografieren!', W/2, H/2); return;
+  }
+  renderFrame(vctx, i);
+  if(mode==='edit' && !playing && selOv>=0 && frames[sel] && frames[sel].overlays[selOv]){
+    const b = bbox(vctx, frames[sel].overlays[selOv]);
+    vctx.save(); vctx.setLineDash([12,8]); vctx.lineWidth=4; vctx.strokeStyle='#7b5cff';
+    vctx.strokeRect(b.x0-10, b.y0-10, b.x1-b.x0+20, b.y1-b.y0+20); vctx.restore();
+  }
+}
+
+/* ---------- Sticker bearbeiten ---------- */
+function curOv(){ const f = frames[sel]; return f && selOv>=0 ? f.overlays[selOv] : null; }
+
+async function addOverlay(kind, text){
+  const f = frames[sel];
+  if(!f){ toast('Erst ein Bild aussuchen!'); return; }
+  const defaults = { speech:'Hallo!', thought:'Hmm …', shout:'BUMM!', caption:'Es war einmal …' };
+  const o = { id:uid(), kind, x:0.3 + Math.random()*0.4, y: kind==='caption' ? 0.12 : 0.22 + Math.random()*0.35,
+              s:1, flip:false, text: text || defaults[kind] };
+  f.overlays.push(o); selOv = f.overlays.length-1; beep('pop');
+  if(kind!=='emoji'){
+    const t = await askText(o.text);
+    if(t) o.text = t;
+  }
+  afterChange(false);
+}
+
+function hitTest(px, py){
+  const f = frames[sel]; if(!f) return -1;
+  for(let k=f.overlays.length-1;k>=0;k--){
+    const b = bbox(vctx, f.overlays[k]);
+    if(px>=b.x0-12 && px<=b.x1+12 && py>=b.y0-12 && py<=b.y1+12) return k;
+  }
+  return -1;
+}
+
+const ptrs = new Map(); let dragOv = null, pinch = null, lastTap = { t:0, k:-1 };
+function canvasPt(e){ const r = view.getBoundingClientRect(); return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H }; }
+
+view.addEventListener('pointerdown', e=>{
+  if(mode!=='edit' || playing) return;
+  view.setPointerCapture(e.pointerId);
+  const p = canvasPt(e); ptrs.set(e.pointerId, p);
+  if(ptrs.size===1){
+    const k = hitTest(p.x, p.y); selOv = k;
+    if(k>=0){
+      const o = frames[sel].overlays[k];
+      dragOv = { dx:p.x - o.x*W, dy:p.y - o.y*H, moved:false };
+      const now = Date.now();
+      if(now - lastTap.t < 380 && lastTap.k===k && o.kind!=='emoji'){
+        dragOv = null; askText(o.text).then(t=>{ if(t){ o.text=t; afterChange(false); } });
+      }
+      lastTap = { t:now, k };
+    } else dragOv = null;
+    updateOvTools(); renderView();
+  } else if(ptrs.size===2 && curOv()){
+    const [a,b] = [...ptrs.values()];
+    pinch = { d:Math.hypot(a.x-b.x, a.y-b.y) || 1, s:curOv().s }; dragOv = null;
+  }
+});
+view.addEventListener('pointermove', e=>{
+  if(!ptrs.has(e.pointerId)) return;
+  const p = canvasPt(e); ptrs.set(e.pointerId, p);
+  const o = curOv(); if(!o) return;
+  if(pinch && ptrs.size>=2){
+    const [a,b] = [...ptrs.values()];
+    o.s = clamp(pinch.s * Math.hypot(a.x-b.x, a.y-b.y) / pinch.d, 0.4, 4); renderView();
+  } else if(dragOv){
+    o.x = clamp((p.x - dragOv.dx)/W, 0, 1); o.y = clamp((p.y - dragOv.dy)/H, 0, 1);
+    dragOv.moved = true; renderView();
+  }
+});
+const endPtr = e => {
+  if(!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if(ptrs.size<2) pinch = null;
+  if(ptrs.size===0){ if(dragOv && dragOv.moved) afterChange(false); dragOv = null; }
+};
+view.addEventListener('pointerup', endPtr); view.addEventListener('pointercancel', endPtr);
+
+function updateOvTools(){
+  const t = $('#ovTools'), was = t.classList.contains('show'), now = mode==='edit' && !!curOv();
+  t.classList.toggle('show', now);
+  if(now && !was) t.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+
+/* ---------- Filmstreifen ---------- */
+function renderStrip(){
+  strip.innerHTML = '';
+  if(!frames.length){ strip.innerHTML = '<div class="empty">Noch keine Bilder – drück den roten Knopf! 📸</div>'; }
+  frames.forEach((f,i)=>{
+    const d = document.createElement('div'); d.className = 'thumb' + (i===sel?' sel':''); d.dataset.i = i;
+    const im = document.createElement('img'); im.src = f.url; im.draggable = false; im.alt = ''; d.appendChild(im);
+    const n = document.createElement('span'); n.className='num'; n.textContent = i+1; d.appendChild(n);
+    if(f.overlays.length){ const b=document.createElement('span'); b.className='ovb'; b.textContent='💬'; d.appendChild(b); }
+    strip.appendChild(d);
+  });
+  updateInfo();
+}
+function updateStripSel(){
+  const hi = playing ? playIdx : sel;
+  strip.querySelectorAll('.thumb').forEach(t=>t.classList.toggle('sel', +t.dataset.i===hi));
+  updateInfo();
+}
+function scrollToSel(){
+  const t = strip.querySelector(`.thumb[data-i="${playing?playIdx:sel}"]`);
+  if(t) t.scrollIntoView({ block:'nearest', inline:'center', behavior: playing ? 'auto' : 'smooth' });
+}
+function updateInfo(){
+  const n = frames.length, sec = (n/fps).toFixed(1).replace('.', ',');
+  $('#info').textContent = n ? `${n} ${n===1?'Bild':'Bilder'} · ${sec} Sek. Film` : '0 Bilder';
+  $('#selInfo').textContent = (sel>=0 && n) ? `Bild ${sel+1} von ${n}` : '';
+  const has = sel>=0 && n>0;
+  $('#fLeft').disabled = !has || sel===0;
+  $('#fRight').disabled = !has || sel===n-1;
+  $('#fDup').disabled = !has; $('#fDel').disabled = !has;
+  $('#fUndo').style.display = undoStack.length ? '' : 'none';
+}
+
+function selectFrame(i){
+  if(playing) stopPlay();
+  sel = clamp(i, 0, frames.length-1); selOv = -1;
+  updateStripSel(); updateOvTools(); renderView();
+}
+
+function moveFrame(from, to){   // "to" = Einfügeposition im alten Array
+  if(to>from) to--;
+  if(to===from) return;
+  const [f] = frames.splice(from, 1); frames.splice(to, 0, f); sel = to;
+  afterChange(); scrollToSel();
+}
+
+// Antippen = auswählen, lange drücken = ziehen
+let sd = null;
+const ghost = $('#ghost');
+strip.addEventListener('pointerdown', e=>{
+  const t = e.target.closest('.thumb'); if(!t) return;
+  sd = { i:+t.dataset.i, el:t, x:e.clientX, y:e.clientY, id:e.pointerId, active:false, target:null, mouse:e.pointerType==='mouse' };
+  sd.timer = setTimeout(()=>startDrag(e.clientX, e.clientY), 320);
+});
+function startDrag(x, y){
+  if(!sd) return;
+  sd.active = true; sd.el.classList.add('lift'); beep('pop');
+  ghost.style.backgroundImage = `url(${frames[sd.i].url})`; ghost.style.display='block';
+  ghost.style.left = x+'px'; ghost.style.top = y+'px';
+  try{ navigator.vibrate && navigator.vibrate(30); }catch(e){}
+}
+function clearMarks(){ strip.querySelectorAll('.before,.after').forEach(t=>t.classList.remove('before','after')); }
+window.addEventListener('pointermove', e=>{
+  if(!sd || e.pointerId!==sd.id) return;
+  const dx = e.clientX-sd.x, dy = e.clientY-sd.y;
+  if(!sd.active){
+    if(Math.hypot(dx,dy) > 10){
+      if(sd.mouse) startDrag(e.clientX, e.clientY);
+      else { clearTimeout(sd.timer); sd = null; return; }   // war ein Wischen zum Scrollen
+    } else return;
+  }
+  ghost.style.left = e.clientX+'px'; ghost.style.top = e.clientY+'px';
+  clearMarks(); sd.target = null;
+  const sr = strip.getBoundingClientRect();
+  if(e.clientX < sr.left+50) strip.scrollLeft -= 14; else if(e.clientX > sr.right-50) strip.scrollLeft += 14;
+  const thumbs = [...strip.querySelectorAll('.thumb')];
+  if(!thumbs.length) return;
+  let best = null, bd = Infinity;
+  thumbs.forEach(t=>{ const r=t.getBoundingClientRect(); const d=Math.abs(e.clientX-(r.left+r.width/2)); if(d<bd){bd=d;best=t;} });
+  const r = best.getBoundingClientRect(), j = +best.dataset.i;
+  if(e.clientX < r.left + r.width/2){ best.classList.add('before'); sd.target = j; }
+  else { best.classList.add('after'); sd.target = j+1; }
+});
+strip.addEventListener('touchmove', e=>{ if(sd && sd.active) e.preventDefault(); }, { passive:false });
+function endStrip(e){
+  if(!sd || e.pointerId!==sd.id) return;
+  clearTimeout(sd.timer);
+  const s = sd; sd = null;
+  ghost.style.display='none'; clearMarks(); s.el.classList.remove('lift');
+  if(s.active){ if(s.target!=null && e.type!=='pointercancel') moveFrame(s.i, s.target); }
+  else if(e.type==='pointerup') selectFrame(s.i);
+}
+window.addEventListener('pointerup', endStrip); window.addEventListener('pointercancel', endStrip);
+
+/* ---------- Bild-Werkzeuge ---------- */
+$('#fLeft').onclick  = () => { if(sel>0) moveFrame(sel, sel-1); };
+$('#fRight').onclick = () => { if(sel<frames.length-1) moveFrame(sel, sel+2); };
+$('#fDup').onclick = async () => {
+  const f = frames[sel]; if(!f) return;
+  await addFrame(f.blob, f.overlays.map(o=>({ ...o, id:uid() })), sel+1); toast('Bild gedoppelt 📄');
+};
+$('#fDel').onclick = async () => {
+  const f = frames[sel]; if(!f) return;
+  if(!await ask(`<h2>Bild ${sel+1} wegwerfen?</h2><img src="${f.url}" alt="">`, '🗑️ Ja, weg', 'Nein')) return;
+  undoStack.push({ f, i:sel }); if(undoStack.length>30) undoStack.shift();
+  frames.splice(sel, 1); sel = Math.min(sel, frames.length-1); selOv = -1;
+  afterChange();
+};
+$('#fUndo').onclick = () => {
+  const u = undoStack.pop(); if(!u) return;
+  const i = Math.min(u.i, frames.length); frames.splice(i, 0, u.f); sel = i;
+  afterChange(); scrollToSel(); toast('Wieder da! ↩️');
+};
+
+/* ---------- Abspielen ---------- */
+function startPlay(){
+  if(!frames.length){ toast('Erst Fotos machen! 📸'); return; }
+  playing = true; playIdx = (sel>=0 && sel<frames.length-1) ? sel : 0;
+  $('#playBtn').innerHTML = '<span class="ico">⏸️</span>Anhalten'; $('#playBtn').classList.replace('mint','red');
+  $('#playBadge').style.display='block';
+  tick(); playTimer = setInterval(tick, 1000/fps);
+}
+function tick(){
+  renderView(); updateStripSel(); scrollToSel();
+  $('#playBadge').textContent = `▶ ${playIdx+1} / ${frames.length}`;
+  playIdx++;
+  if(playIdx >= frames.length){ if(loop) playIdx = 0; else { clearInterval(playTimer); setTimeout(stopPlay, 1000/fps); } }
+}
+function stopPlay(){
+  if(!playing) return;
+  clearInterval(playTimer); playing = false;
+  $('#playBtn').innerHTML = '<span class="ico">▶️</span>Film ab!'; $('#playBtn').classList.replace('red','mint');
+  $('#playBadge').style.display='none';
+  updateStripSel(); renderView();
+}
+$('#playBtn').onclick = () => playing ? stopPlay() : startPlay();
+$('#speedRow').addEventListener('click', e=>{
+  const b = e.target.closest('[data-fps]'); if(!b) return;
+  fps = +b.dataset.fps; document.querySelectorAll('#speedRow .btn').forEach(x=>x.classList.toggle('on', x===b));
+  if(playing){ clearInterval(playTimer); playTimer = setInterval(tick, 1000/fps); }
+  updateInfo(); save();
+});
+$('#loopBtn').onclick = () => { loop = !loop; $('#loopBtn').classList.toggle('on', loop); };
+
+/* ---------- Film speichern (Video) ---------- */
+async function exportFilm(){
+  if(!frames.length){ toast('Erst Fotos machen! 📸'); return; }
+  const c = document.createElement('canvas'); c.width=W; c.height=H;
+  if(!window.MediaRecorder || !c.captureStream){ toast('Dieser Browser kann leider keine Videos bauen 😕'); return; }
+  stopPlay();
+  const types = ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const type = types.find(t=>{ try{ return MediaRecorder.isTypeSupported(t); }catch(e){ return false; } }) || '';
+  const ext = type.includes('mp4') ? 'mp4' : 'webm';
+
+  const dlg = $('#expDlg'), bar = $('#expBar div');
+  $('#expTitle').textContent = '🎞️ Dein Film wird gebaut …';
+  $('#expStage').innerHTML = ''; $('#expStage').appendChild(c);
+  $('#expBtns').style.display='none'; $('#expClose').style.display='none'; $('#expBar').style.display='block';
+  bar.style.width = '0%'; dlg.classList.add('open');
+
+  const ctx = c.getContext('2d'); renderFrame(ctx, 0);
+  const st = c.captureStream(30);
+  let rec;
+  try{ rec = new MediaRecorder(st, type ? { mimeType:type, videoBitsPerSecond:6e6 } : { videoBitsPerSecond:6e6 }); }
+  catch(e){ dlg.classList.remove('open'); toast('Video bauen klappt hier nicht 😕'); return; }
+  const chunks = []; rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(r => rec.onstop = r);
+  rec.start(250);
+  const dt = 1000/fps;
+  for(let i=0;i<frames.length;i++){
+    renderFrame(ctx, i);
+    bar.style.width = Math.round((i+1)/frames.length*100) + '%';
+    await sleep(dt);
+  }
+  await sleep(Math.max(dt, 400));   // letztes Bild kurz stehen lassen
+  rec.stop(); await stopped;
+  st.getTracks().forEach(t=>t.stop());
+
+  const blob = new Blob(chunks, { type: type ? type.split(';')[0] : 'video/webm' });
+  const d = new Date(), stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  const name = `Mein-Film_${stamp}.${ext}`;
+  const url = URL.createObjectURL(blob);
+
+  const v = document.createElement('video'); v.src = url; v.controls = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.muted = true;
+  $('#expStage').innerHTML = ''; $('#expStage').appendChild(v);
+  $('#expTitle').textContent = '🎉 Dein Film ist fertig!';
+  $('#expBar').style.display='none';
+  const a = $('#expDl'); a.href = url; a.download = name;
+  const file = new File([blob], name, { type: blob.type });
+  const canShare = navigator.canShare && navigator.canShare({ files:[file] });
+  $('#expShare').style.display = canShare ? '' : 'none';
+  $('#expShare').onclick = () => navigator.share({ files:[file], title:'Mein Stop-Motion-Film' }).catch(()=>{});
+  $('#expBtns').style.display='flex'; $('#expClose').style.display='';
+  beep('go');
+}
+$('#exportBtn').onclick = exportFilm;
+$('#expClose').onclick = () => { $('#expDlg').classList.remove('open'); $('#expStage').innerHTML=''; };
+
+$('#newBtn').onclick = async () => {
+  if(!frames.length) return;
+  if(!await ask('<h2>🆕 Neuen Film anfangen?</h2><p style="font-size:20px">Alle Bilder von diesem Film werden weggeworfen. Hast du ihn schon mit 🎞️ gespeichert?</p>', 'Ja, neu!', 'Nein')) return;
+  frames.forEach(f=>URL.revokeObjectURL(f.url));
+  frames = []; sel = -1; selOv = -1; undoStack = [];
+  afterChange();
+};
+
+/* ---------- Modus ---------- */
+function setMode(m){
+  stopPlay(); mode = m; document.body.dataset.mode = m;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===m));
+  cam.style.display = m==='camera' ? '' : 'none';
+  view.style.display = m==='camera' ? 'none' : '';
+  if(m==='camera'){ if(!stream) startCam(); }
+  else { camMsg(''); if(frames.length && sel<0) sel = 0; }
+  if(m==='camera' && !stream) {} // Meldung kommt aus startCam
+  selOv = -1;
+  $('#side').scrollTop = 0;
+  const hint = $('#hint');
+  if(m==='edit' && frames.length){ hint.textContent='Bild antippen, dann etwas draufkleben ✨'; hint.style.display='block'; setTimeout(()=>hint.style.display='none', 3500); }
+  else hint.style.display='none';
+  updateOnion(); updateOvTools(); updateStripSel(); renderView();
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick = () => setMode(t.dataset.mode));
+
+/* ---------- Knöpfe Kamera ---------- */
+$('#snapBtn').onclick = snap;
+$('#onionBtn').onclick = () => { onion = !onion; $('#onionBtn').classList.toggle('on', onion); updateOnion(); };
+$('#timerBtn').onclick = () => { useTimer = !useTimer; $('#timerBtn').classList.toggle('on', useTimer); };
+$('#flipCamBtn').onclick = () => { facing = facing==='environment' ? 'user' : 'environment'; startCam(); };
+$('#importBtn').onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = e => { importFiles(e.target.files); e.target.value=''; };
+
+/* ---------- Knöpfe Verzieren ---------- */
+const eg = $('#emojiGrid');
+EMOJIS.forEach(em=>{ const b=document.createElement('button'); b.className='btn'; b.textContent=em; b.onclick=()=>addOverlay('emoji', em); eg.appendChild(b); });
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick = () => addOverlay(b.dataset.add));
+$('#ovBigger').onclick  = () => { const o=curOv(); if(o){ o.s=clamp(o.s*1.2,0.4,4); afterChange(false); } };
+$('#ovSmaller').onclick = () => { const o=curOv(); if(o){ o.s=clamp(o.s/1.2,0.4,4); afterChange(false); } };
+$('#ovFlip').onclick    = () => { const o=curOv(); if(o){ o.flip=!o.flip; afterChange(false); } };
+$('#ovText').onclick    = async () => { const o=curOv(); if(!o) return;
+  if(o.kind==='emoji'){ toast('Sticker haben keinen Text – nimm eine Sprechblase 💬'); return; }
+  const t = await askText(o.text); if(t){ o.text=t; afterChange(false); } };
+$('#ovDel').onclick = () => { const f=frames[sel]; if(!f||selOv<0) return; f.overlays.splice(selOv,1); selOv=-1; afterChange(); };
+$('#ovNext').onclick = () => {
+  const o = curOv(); if(!o) return;
+  if(sel >= frames.length-1){ toast('Das ist schon das letzte Bild 🙂'); return; }
+  const nf = frames[sel+1];
+  let k = nf.overlays.findIndex(x=>x.src===(o.src||o.id));
+  if(k<0){ nf.overlays.push({ ...o, id:uid(), src:o.src||o.id }); k = nf.overlays.length-1; }
+  sel++; selOv = k; afterChange(); scrollToSel(); beep('pop');
+};
+$('#ovAll').onclick = () => {
+  const o = curOv(); if(!o) return;
+  let n = 0;
+  for(let i=sel+1;i<frames.length;i++){
+    const ov = frames[i].overlays;
+    if(!ov.some(x=>x.src===(o.src||o.id))){ ov.push({ ...o, id:uid(), src:o.src||o.id }); n++; }
+  }
+  afterChange(); toast(n ? `In ${n} Bilder kopiert ⏩` : 'Ist schon überall drin 🙂');
+};
+
+/* ---------- Tastatur (Laptop) ---------- */
+window.addEventListener('keydown', e=>{
+  if($('.modal.open')) { if(e.key==='Enter' && $('#txtDlg').classList.contains('open') && !e.shiftKey){ e.preventDefault(); $('#txtOk').click(); } return; }
+  if(e.code==='Space' && mode==='camera'){ e.preventDefault(); snap(); }
+  else if(e.code==='Space' && mode==='play'){ e.preventDefault(); playing?stopPlay():startPlay(); }
+  else if(e.key==='ArrowLeft' && frames.length) selectFrame(sel-1);
+  else if(e.key==='ArrowRight' && frames.length) selectFrame(sel+1);
+});
+
+/* ---------- Speichern im Browser (IndexedDB) ---------- */
+let db = null;
+function openDB(){
+  return new Promise(res=>{
+    try{
+      const r = indexedDB.open('filmfabrik', 1);
+      r.onupgradeneeded = () => { const d=r.result; d.createObjectStore('frames', { keyPath:'id' }); d.createObjectStore('meta'); };
+      r.onsuccess = () => { db = r.result; res(db); };
+      r.onerror = () => res(null);
+    }catch(e){ res(null); }
+  });
+}
+let saveT = null;
+function save(){ clearTimeout(saveT); saveT = setTimeout(doSave, 700); }
+function doSave(){
+  if(!db) return;
+  try{
+    const tx = db.transaction(['frames','meta'], 'readwrite'), fs = tx.objectStore('frames');
+    fs.clear();
+    frames.forEach(f=>fs.put({ id:f.id, blob:f.blob, overlays:f.overlays }));
+    tx.objectStore('meta').put({ order:frames.map(f=>f.id), fps }, 'state');
+  }catch(e){}
+}
+async function load(){
+  if(!db) return;
+  try{
+    const get = (store, key) => new Promise((res,rej)=>{ const r = db.transaction(store).objectStore(store)[key===undefined?'getAll':'get'](key); r.onsuccess=()=>res(r.result); r.onerror=rej; });
+    const meta = await get('meta', 'state'); const all = await get('frames');
+    if(!meta || !all || !all.length) return;
+    const byId = new Map(all.map(r=>[r.id, r]));
+    for(const id of meta.order){ const r = byId.get(id); if(r && r.blob) frames.push(await makeFrame(r.blob, r.overlays||[], r.id)); }
+    if(meta.fps){ fps = meta.fps; document.querySelectorAll('#speedRow .btn').forEach(x=>x.classList.toggle('on', +x.dataset.fps===fps)); }
+    sel = frames.length-1;
+    if(frames.length) toast(`Willkommen zurück! ${frames.length} Bilder sind noch da 🎬`);
+  }catch(e){}
+}
+
+function afterChange(rebuild=true){
+  if(rebuild) renderStrip(); else { renderStrip(); }
+  updateStripSel(); updateOnion(); updateOvTools(); renderView(); save();
+}
+
+/* ---------- Start ---------- */
+(async () => {
+  fitStage();
+  await openDB(); await load();
+  renderStrip(); setMode('camera'); scrollToSel();
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(renderView);
+  // Offline-Funktion (nur wenn über https/localhost geladen)
+  if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+  // Browser bitten, die Bilder nicht von selbst zu löschen
+  try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+})();
+})();
+</script>
+</body>
+</html>
